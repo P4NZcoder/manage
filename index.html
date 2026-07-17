@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#090914">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>ระบบเงินเดือน</title>
+  <meta name="description" content="ระบบจัดการเงินเดือนพนักงาน 2 รอบต่อเดือน มีระบบเช็คชื่อ เบิกค่าอาหาร และลงบิล">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ===== Splash Screen ===== -->
+    <div id="splash" class="splash">
+      <div class="splash-inner">
+        <div class="splash-logo">
+          <i class="fas fa-coins"></i>
+        </div>
+        <h1 class="splash-title">ระบบเงินเดือน</h1>
+        <p class="splash-sub">Payroll Management</p>
+        <div class="splash-progress"><div class="splash-bar"></div></div>
+      </div>
+    </div>
+
+    <!-- ===== Top App Bar ===== -->
+    <header class="topbar" id="topbar">
+      <button class="topbar-btn" id="btn-back" style="visibility:hidden" onclick="goBack()">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <span class="topbar-title" id="topbar-title">หน้าหลัก</span>
+      <button class="topbar-btn" id="btn-action" style="visibility:hidden">
+        <i class="fas fa-plus" id="btn-action-icon"></i>
+      </button>
+    </header>
+
+    <!-- ===== Main Content ===== -->
+    <main class="content" id="content"></main>
+
+    <!-- ===== Bottom Navigation ===== -->
+    <nav class="bottomnav" id="bottomnav">
+      <button class="bnav-btn active" data-page="dashboard">
+        <i class="fas fa-home"></i>
+        <span>หน้าหลัก</span>
+      </button>
+      <button class="bnav-btn" data-page="attendance">
+        <i class="fas fa-calendar-check"></i>
+        <span>เช็คชื่อ</span>
+      </button>
+
+      <button class="bnav-btn" data-page="payroll">
+        <i class="fas fa-wallet"></i>
+        <span>เงินเดือน</span>
+      </button>
+      <button class="bnav-btn" data-page="employees">
+        <i class="fas fa-users"></i>
+        <span>พนักงาน</span>
+      </button>
+    </nav>
+
+    <!-- ===== Modal Sheet ===== -->
+    <div class="modal-backdrop" id="modal-backdrop" onclick="closeModal()"></div>
+    <div class="modal-sheet" id="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+
+    <!-- ===== Toast Container ===== -->
+    <div class="toast-box" id="toast-box"></div>
+
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(console.error);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "ระบบเงินเดือน (Payroll)",
+  "short_name": "เงินเดือน",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F0F2F5",
+  "theme_color": "#0866FF",
+  "description": "ระบบจัดการเงินเดือนพนักงานสไตล์ Facebook iOS",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzA4NjZmZiIgcng9IjIyIi8+PHRleHQgeD0iNTAiIHk9IjcwIiBmb250LXNpemU9IjYwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSI+4Li/PC90ZXh0Pjwvc3ZnPg==",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
