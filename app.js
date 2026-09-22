@@ -136,13 +136,15 @@ function seedData(){
 }
 
 /* ======= STATE ======= */
+const currDt=new Date();
 const S={
   page:'attendance',prevPage:null,
-  att:{mode:'daily',date:todayKey(),empId:null,month:7,year:2026},
+  att:{mode:'daily',date:todayKey(),empId:null,month:currDt.getMonth()+1,year:currDt.getFullYear()},
   exp:{filter:'all'},
-  pay:{month:7,year:2026,cycle:2},
+  pay:{month:currDt.getMonth()+1,year:currDt.getFullYear(),cycle:currDt.getDate()>15?2:1},
   emp:{search:'',selectedId:null},
 };
+
 
 /* ======= CALCULATOR ======= */
 const Calc={
@@ -261,7 +263,7 @@ function renderPage(page){
 
 /* ======= RENDER: DASHBOARD ======= */
 function renderDashboard(){
-  const now=new Date('2026-07-16T00:00:00');
+  const now=new Date();
   const day=now.getDate(),m=now.getMonth()+1,y=now.getFullYear();
   const emps=DB.getEmployees().filter(e=>e.status==='active');
   const totalSal=emps.reduce((s,e)=>s+e.base_salary,0);
@@ -295,9 +297,14 @@ function renderDashboard(){
 
   return `
   <!-- Greeting -->
-  <div style="padding:16px 16px 8px">
-    <div class="dash-welcome" style="font-size:22px;font-weight:900;letter-spacing:-0.02em;color:var(--t1)">วัน${TH_WEEKDAYS[now.getDay()]} ${day} ${TH_MONTHS_S[m-1]} ${y+543}</div>
-    <div class="dash-company" style="font-size:14px;color:var(--t2);font-weight:600;margin-top:2px">${CFG.company}</div>
+  <div style="padding:16px 16px 8px; display:flex; justify-content:space-between; align-items:flex-end;">
+    <div>
+      <div class="dash-welcome" style="font-size:22px;font-weight:900;letter-spacing:-0.02em;color:var(--t1)">วัน${TH_WEEKDAYS[now.getDay()]} ${day} ${TH_MONTHS_S[m-1]} ${y+543}</div>
+      <div class="dash-company" style="font-size:14px;color:var(--t2);font-weight:600;margin-top:2px">${CFG.company}</div>
+    </div>
+    <button class="btn" style="padding:8px 16px;border-radius:var(--r-lg);background:var(--blue)15;color:var(--blue);font-weight:bold;border:none;box-shadow:none;" onclick="showSharedQR()">
+      <i class="fas fa-qrcode"></i> QR ลงเวลา
+    </button>
   </div>
 
   <!-- Today stat bar -->
@@ -640,6 +647,10 @@ function renderMenu(){
   <div class="fb-section" style="padding:16px 16px 0;background:var(--surface)">
     <div class="menu-header">เมนู</div>
     <div class="menu-grid">
+      <div class="menu-card" onclick="showSharedQR()" style="background:var(--blue)15;border:1px solid var(--blue)40;">
+        <i class="fas fa-qrcode" style="color:var(--blue)"></i>
+        <span style="color:var(--blue);font-weight:bold;">QR จุดลงเวลา</span>
+      </div>
       <div class="menu-card" onclick="navigate('employees')">
         <i class="fas fa-users" style="color:var(--purple)"></i>
         <span>รายชื่อพนักงาน</span>
@@ -756,6 +767,11 @@ function renderEmpDetail(empId){
       </button>
       <button class="btn" style="flex:1;background:var(--red-bg);color:var(--red);border-radius:var(--r-lg);font-weight:700;padding:12px" onclick="delEmpConfirm('${emp.id}')">
         <i class="fas fa-trash"></i> ลบพนักงาน
+      </button>
+    </div>
+    <div style="margin-top:12px;padding:0 4px">
+      <button class="btn" style="width:100%;background:var(--blue);color:#fff;border-radius:var(--r-lg);font-weight:700;padding:12px" onclick="showQR('${emp.id}')">
+        <i class="fas fa-qrcode"></i> แสดง QR Code ประจำตัว
       </button>
     </div>
   </div>
@@ -1321,11 +1337,162 @@ function bindEvents(){
   document.querySelectorAll('.bnav-btn').forEach(btn=>{btn.onclick=()=>navigate(btn.dataset.page);});
 }
 
+/* ======= PORTAL ======= */
+function showQR(empId) {
+  const emp = DB.getEmployee(empId);
+  if (!emp) return;
+  const url = window.location.href.split('?')[0] + '?emp=' + empId;
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' + encodeURIComponent(url);
+  
+  document.getElementById('modal-body').innerHTML = `
+    <div style="text-align:center;padding:10px 0 20px;">
+      <h3 style="margin-bottom:16px;">QR Code ประจำตัว</h3>
+      <img src="${qrUrl}" alt="QR" style="width:220px;height:220px;border-radius:12px;margin:0 auto;box-shadow:0 4px 12px rgba(0,0,0,0.1);display:block;">
+      <p style="margin-top:16px;font-size:14px;color:var(--t2);">ให้พนักงานสแกน QR นี้เพื่อเข้าสู่ระบบลงเวลาและดูยอดเงินของตัวเอง</p>
+      <button class="btn btn-outline" style="width:100%;margin-top:20px;" onclick="closeModal()">ปิด</button>
+    </div>
+  `;
+  document.getElementById('modal-sheet').classList.add('show');
+  document.getElementById('modal-backdrop').classList.add('show');
+}
+
+function showSharedQR() {
+  const url = window.location.href.split('?')[0] + '?portal=shared';
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url);
+  
+  document.getElementById('modal-body').innerHTML = `
+    <div style="text-align:center;padding:10px 0 20px;">
+      <h3 style="margin-bottom:16px;">QR จุดลงเวลา (ส่วนกลาง)</h3>
+      <img src="${qrUrl}" alt="QR" style="width:250px;height:250px;border-radius:12px;margin:0 auto;box-shadow:0 4px 12px rgba(0,0,0,0.1);display:block;">
+      <p style="margin-top:16px;font-size:14px;color:var(--t2);">ปริ้น QR นี้แปะไว้ที่ออฟฟิศ เพื่อให้พนักงานทุกคนสแกนลงเวลา</p>
+      <button class="btn btn-primary" style="width:100%;margin-top:20px;padding:12px;border-radius:20px;font-size:16px;font-weight:bold;" onclick="closeModal()">ปิดหน้าต่างนี้</button>
+    </div>
+  `;
+  document.getElementById('modal-sheet').classList.add('show');
+  document.getElementById('modal-backdrop').classList.add('show');
+}
+
+function renderSharedPortal() {
+  const emps = DB.getEmployees().filter(e => e.status === 'active');
+  const $c = document.getElementById('content');
+  
+  const listHtml = emps.map(emp => `
+    <div style="background:var(--surface);border-radius:var(--r-lg);padding:16px;margin-bottom:12px;display:flex;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.04);cursor:pointer;" onclick="renderPortal('${emp.id}', true)">
+      <div class="avatar" style="background:${emp.avatar_color};margin-right:16px;">${emp.emoji||initials(emp.name)}</div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:16px;">${emp.name}</div>
+        <div style="font-size:13px;color:var(--t2);">${emp.position}</div>
+      </div>
+      <i class="fas fa-chevron-right" style="color:var(--border);"></i>
+    </div>
+  `).join('');
+
+  $c.innerHTML = `
+    <div style="padding:20px; max-width:500px; margin:0 auto; padding-bottom:100px;">
+      <div style="text-align:center;margin-bottom:30px;">
+        <div style="width:72px;height:72px;background:var(--blue);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;box-shadow:0 8px 24px var(--blue)55;">
+          <i class="fas fa-fingerprint"></i>
+        </div>
+        <h2 style="margin:0;">จุดลงเวลาเข้าทำงาน</h2>
+        <p style="color:var(--t2);margin:4px 0 0;">กรุณาเลือกชื่อของคุณจากรายการด้านล่าง</p>
+      </div>
+      <div style="margin-bottom:20px;">
+        ${listHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderPortal(empId, fromShared = false) {
+  const emp = DB.getEmployee(empId);
+  const $c = document.getElementById('content');
+  if (!emp) {
+    $c.innerHTML = '<div style="padding:40px;text-align:center;"><h3>ไม่พบข้อมูลพนักงาน</h3><p>รหัสนี้อาจถูกลบไปแล้ว</p></div>';
+    return;
+  }
+  
+  const m = currDt.getMonth() + 1;
+  const y = currDt.getFullYear();
+  const today = todayKey();
+  const attRec = DB.getAttRec(empId, today);
+  
+  const st = Calc.earnedSoFar(empId, m, y, today);
+  
+  let attHtml = '';
+  if (attRec) {
+    let lbl = {present:'มาทำงาน',late:'มาสาย',absent:'ขาดงาน',sick_leave:'ลาป่วย',personal_leave:'ลากิจ',annual_leave:'พักร้อน',holiday:'วันหยุด'}[attRec.status]||attRec.status;
+    let color = attRec.status==='present'?'var(--green)':attRec.status==='late'?'var(--orange)':'var(--red)';
+    attHtml = `<div style="padding:16px;background:${color}15;color:${color};border-radius:12px;text-align:center;font-weight:bold;font-size:18px;">
+      <i class="fas fa-check-circle"></i> วันนี้คุณลงเวลาแล้ว (${lbl})
+    </div>`;
+  } else {
+    attHtml = `<button class="btn" style="width:100%;height:60px;font-size:18px;border-radius:20px;background:var(--blue);color:#fff;box-shadow:0 8px 24px var(--blue)40;" onclick="portalCheckIn('${empId}', ${fromShared})">
+      <i class="fas fa-fingerprint" style="margin-right:8px;font-size:24px;vertical-align:-3px;"></i> ลงเวลาเข้าทำงานวันนี้
+    </button>`;
+  }
+
+  $c.innerHTML = `
+    <div style="padding:20px; max-width:500px; margin:0 auto; padding-bottom:100px;">
+      ${fromShared ? `<div style="margin-bottom:20px;"><button class="btn btn-outline" style="padding:8px 16px;border-radius:20px;" onclick="renderSharedPortal()"><i class="fas fa-arrow-left"></i> กลับไปหน้ารายชื่อ</button></div>` : ''}
+      <div style="text-align:center;margin-bottom:30px;">
+        <div class="avatar av-xl" style="background:${emp.avatar_color};box-shadow:0 4px 20px ${emp.avatar_color}55;margin:0 auto 16px;">${emp.emoji||initials(emp.name)}</div>
+        <h2 style="margin:0;">สวัสดี, ${emp.name.split(' ')[0]}</h2>
+        <p style="color:var(--t2);margin:4px 0 0;">${emp.position}</p>
+      </div>
+      
+      <div style="margin-bottom:30px;">
+        ${attHtml}
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px;box-shadow:0 4px 16px rgba(0,0,0,.03);">
+        <h3 style="margin:0 0 16px;font-size:16px;color:var(--t2);"><i class="fas fa-wallet"></i> กระเป๋าเงินของฉัน (รอบปัจจุบัน)</h3>
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:15px;">
+          <span>ทำงานสะสม</span><span style="font-weight:bold;">${st.days} วัน</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:15px;">
+          <span>รายได้สะสม</span><span style="font-weight:bold;color:var(--green);">${fmt.money(st.earned)} ฿</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:15px;">
+          <span>ยอดเบิก/หัก</span><span style="font-weight:bold;color:var(--red);">- ${fmt.money(st.draws)} ฿</span>
+        </div>
+        <hr style="border:none;border-top:1px dashed var(--border);margin:16px 0;">
+        <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:bold;">
+          <span>ยอดคงเหลือ</span><span style="color:var(--blue);">${fmt.money(st.max)} ฿</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function portalCheckIn(empId, fromShared) {
+  DB.setAttRec(empId, todayKey(), {status: 'present', late_minutes: 0, ot_hours: 0, ot_type: null, note: 'ลงเวลาผ่าน QR'});
+  renderPortal(empId, fromShared);
+  toast('ลงเวลาเข้าทำงานสำเร็จ!', 'success');
+}
+
 /* ======= INIT ======= */
 async function init(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const portalEmpId = urlParams.get('emp');
+  const portalShared = urlParams.get('portal');
+
   const loaded = await cloudLoad();
   if(!loaded) seedData();
   setTimeout(()=>{const sp=document.getElementById('splash');if(sp){sp.classList.add('hide');setTimeout(()=>sp.remove(),450);}}, 800);
-  renderPage(S.page);
+  
+  if (portalEmpId || portalShared === 'shared') {
+    const bnav = document.querySelector('.bottom-nav'); if (bnav) bnav.style.display = 'none';
+    const tbar = document.querySelector('.topbar'); if (tbar) tbar.style.display = 'none';
+    const ct = document.getElementById('content');
+    ct.style.height = '100vh'; ct.style.paddingTop = '20px'; ct.style.paddingBottom = '20px';
+    
+    if (portalShared === 'shared') {
+      renderSharedPortal();
+    } else {
+      renderPortal(portalEmpId, false);
+    }
+  } else {
+    renderPage(S.page);
+  }
 }
 window.addEventListener('DOMContentLoaded',init);
