@@ -37,7 +37,7 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbzYEDQ4tYL57cHlGsaxowky
 
 function syncToCloud() {
   if (!GAS_URL) return;
-  const fullData = { emp: DB.getEmployees(), att: DB.getAttendance(), draws: DB.getDraws() };
+  const fullData = { emp: DB.getEmployees(), att: DB.getAttendance(), tx: DB.getTx() };
   fetch(GAS_URL, {
     method: 'POST',
     mode: 'no-cors',
@@ -56,7 +56,8 @@ async function cloudLoad() {
     if (data && data.emp && data.emp.length > 0) {
       DB.saveEmployees(data.emp);
       if(data.att) DB.saveAttendance(data.att);
-      if(data.draws) DB.saveDraws(data.draws);
+      if(data.tx) DB.saveTx(data.tx);
+      else if(data.draws) DB.saveTx(data.draws.map(d=>({...d, type:'draw'})));
       DB.setInit();
       return true;
     }
@@ -90,23 +91,23 @@ const DB={
     this.saveAttendance(l);
     syncToCloud('ATTENDANCE', rec);
   },
-  getDraws(){return this.read('draws');},
-  saveDraws(l){this.write('draws',l);},
-  getDraw(id){return this.getDraws().find(e=>e.id===id);},
-  addDraw(d){const l=this.getDraws();const e={...d,id:'DRW'+Date.now(),created_at:new Date().toISOString()};l.push(e);this.saveDraws(l);syncToCloud('DRAW', e);return e;},
-  deleteDraw(id){this.saveDraws(this.getDraws().filter(e=>e.id!==id));syncToCloud('DEL_DRAW', {id});},
-  getDrawByEmp(id,m,y){const p=`${y}-${z2(m)}`;return this.getDraws().filter(e=>e.employee_id===id&&e.date.startsWith(p));},
+  getTx(){return this.read('tx');},
+  saveTx(l){this.write('tx',l);},
+  getTxById(id){return this.getTx().find(e=>e.id===id);},
+  addTx(d){const l=this.getTx();const e={...d,id:'TX'+Date.now(),created_at:new Date().toISOString()};l.push(e);this.saveTx(l);syncToCloud('TX', e);return e;},
+  deleteTx(id){this.saveTx(this.getTx().filter(e=>e.id!==id));syncToCloud('DEL_TX', {id});},
+  getTxByEmp(id,m,y){const p=`${y}-${z2(m)}`;return this.getTx().filter(e=>e.employee_id===id&&e.date.startsWith(p));},
 };
 
 /* ======= SEED DATA ======= */
 function seedData(){
   if(DB.inited())return;
   DB.saveEmployees([
-    {id:'EMP001',name:'สมชาย มานะดี',   department:'การตลาด',      position:'ผู้จัดการฝ่ายการตลาด', base_salary:45000,allowance_diligent:2000,loan_monthly:0,   phone:'081-234-5678',bank_account:'123-4-56789-0',avatar_color:'#6C47FF',status:'active',leave_quota:CFG.leaveQuota,start_date:'2022-03-01'},
-    {id:'EMP002',name:'วิไล สุขสันต์',   department:'ทรัพยากรบุคคล',position:'ผู้จัดการ HR',         base_salary:38000,allowance_diligent:1500,loan_monthly:3000,phone:'082-345-6789',bank_account:'234-5-67890-1',avatar_color:'#E1306C',status:'active',leave_quota:CFG.leaveQuota,start_date:'2021-06-15'},
-    {id:'EMP003',name:'ธนัช รุ่งโรจน์',  department:'เทคโนโลยี',    position:'นักพัฒนาซอฟต์แวร์',  base_salary:42000,allowance_diligent:0,  loan_monthly:5000,phone:'083-456-7890',bank_account:'345-6-78901-2',avatar_color:'#0866FF',status:'active',leave_quota:CFG.leaveQuota,start_date:'2023-01-10'},
-    {id:'EMP004',name:'มาลี วงค์ดี',     department:'บัญชี',         position:'นักบัญชีอาวุโส',      base_salary:32000,allowance_diligent:1000,loan_monthly:0,   phone:'084-567-8901',bank_account:'456-7-89012-3',avatar_color:'#42B72A',status:'active',leave_quota:CFG.leaveQuota,start_date:'2020-09-01'},
-    {id:'EMP005',name:'ปริม แก้วสวย',    department:'การตลาด',      position:'เจ้าหน้าที่การตลาด',  base_salary:28000,allowance_diligent:1000,loan_monthly:0,   phone:'085-678-9012',bank_account:'567-8-90123-4',avatar_color:'#F7B928',status:'active',leave_quota:CFG.leaveQuota,start_date:'2024-02-01'},
+    {id:'EMP001',name:'สมชาย มานะดี',   department:'การตลาด',      position:'ผู้จัดการฝ่ายการตลาด', base_salary:45000,allowance_diligent:2000,loan_monthly:0,   phone:'081-234-5678',bank_account:'123-4-56789-0',avatar_color:'#6C47FF',status:'active',leave_quota:CFG.leaveQuota,start_date:'2022-03-01',emp_type:'fulltime',hourly_rate:0},
+    {id:'EMP002',name:'วิไล สุขสันต์',   department:'ทรัพยากรบุคคล',position:'ผู้จัดการ HR',         base_salary:38000,allowance_diligent:1500,loan_monthly:3000,phone:'082-345-6789',bank_account:'234-5-67890-1',avatar_color:'#E1306C',status:'active',leave_quota:CFG.leaveQuota,start_date:'2021-06-15',emp_type:'fulltime',hourly_rate:0},
+    {id:'EMP003',name:'ธนัช รุ่งโรจน์',  department:'เทคโนโลยี',    position:'นักพัฒนาซอฟต์แวร์',  base_salary:42000,allowance_diligent:0,  loan_monthly:5000,phone:'083-456-7890',bank_account:'345-6-78901-2',avatar_color:'#0866FF',status:'active',leave_quota:CFG.leaveQuota,start_date:'2023-01-10',emp_type:'fulltime',hourly_rate:0},
+    {id:'EMP004',name:'มาลี วงค์ดี',     department:'บัญชี',         position:'นักบัญชีอาวุโส',      base_salary:32000,allowance_diligent:1000,loan_monthly:0,   phone:'084-567-8901',bank_account:'456-7-89012-3',avatar_color:'#42B72A',status:'active',leave_quota:CFG.leaveQuota,start_date:'2020-09-01',emp_type:'fulltime',hourly_rate:0},
+    {id:'EMP005',name:'ปริม แก้วสวย',    department:'พาร์ทไทม์',    position:'พนักงานชั่วคราว',    base_salary:0,allowance_diligent:0,loan_monthly:0,   phone:'085-678-9012',bank_account:'567-8-90123-4',avatar_color:'#F7B928',status:'active',leave_quota:CFG.leaveQuota,start_date:'2024-02-01',emp_type:'parttime',hourly_rate:60},
   ]);
   const aMap={
     EMP001:{1:'present',2:'present',3:'present',4:'holiday',5:'holiday',6:'present',7:'present',8:'present',9:'present',10:'present',11:'holiday',12:'holiday',13:'present',14:'present',15:'present',16:'present'},
@@ -128,9 +129,9 @@ function seedData(){
     });
   });
   DB.saveAttendance(al);
-  DB.saveDraws([
-    {id:'DRW001',employee_id:'EMP001',date:'2026-07-08',amount:500,created_at:'2026-07-08T18:00:00'},
-    {id:'DRW002',employee_id:'EMP002',date:'2026-07-10',amount:300,created_at:'2026-07-10T18:00:00'}
+  DB.saveTx([
+    {id:'TX001',employee_id:'EMP001',date:'2026-07-08',type:'draw',amount:500,note:'เบิกล่วงหน้า',created_at:'2026-07-08T18:00:00'},
+    {id:'TX002',employee_id:'EMP002',date:'2026-07-10',type:'draw',amount:300,note:'ค่าเดินทาง',created_at:'2026-07-10T18:00:00'}
   ]);
   DB.setInit();
 }
@@ -138,7 +139,7 @@ function seedData(){
 /* ======= STATE ======= */
 const currDt=new Date();
 const S={
-  page:'attendance',prevPage:null,
+  page:'calendar',prevPage:null,
   att:{mode:'daily',date:todayKey(),empId:null,month:currDt.getMonth()+1,year:currDt.getFullYear()},
   exp:{filter:'all'},
   pay:{month:currDt.getMonth()+1,year:currDt.getFullYear(),cycle:currDt.getDate()>15?2:1},
@@ -170,7 +171,8 @@ const Calc={
   earnedSoFar(id, m, y, upToDate) {
     const emp = DB.getEmployee(id);
     if(!emp) return {days:0, earned:0, advance:0, draws:0, max:0, cycle:1};
-    const daily = this.daily(emp.base_salary);
+    const isPT = emp.emp_type === 'parttime';
+    const daily = this.daily(emp.base_salary||0);
     const dayOfMonth = parseInt(upToDate.split('-')[2]);
     const cycle = (dayOfMonth > CFG.payDay) ? 2 : 1;
     const startDay = cycle === 2 ? CFG.payDay + 1 : 1;
@@ -178,46 +180,73 @@ const Calc={
     
     const recs = DB.getAttByEmp(id,m,y);
     let days = 0;
+    let ptHours = 0;
     recs.forEach(r => {
       const d = parseInt(r.date.split('-')[2]);
-      if (d >= startDay && d <= endDay && (r.status === 'present' || r.status === 'late')) days++;
+      if (d >= startDay && d <= endDay && (r.status === 'present' || r.status === 'late')) {
+        days++;
+        if (isPT) ptHours += (r.work_hours || 0);
+      }
     });
-    const earned = Math.floor(days * daily);
-    const drawsList = DB.getDrawByEmp(id,m,y).filter(d => {
+    
+    let dailyBonusTotal = 0;
+    recs.forEach(r => {
+      const d = parseInt(r.date.split('-')[2]);
+      if (d >= startDay && d <= endDay) dailyBonusTotal += (r.bonus || 0);
+    });
+    const earned = isPT ? Math.floor(ptHours * (emp.hourly_rate||0)) + dailyBonusTotal : Math.floor(days * daily) + dailyBonusTotal;
+    const txList = DB.getTxByEmp(id,m,y).filter(d => {
       const dd = parseInt(d.date.split('-')[2]);
       return dd >= startDay && dd <= endDay;
     });
-    const totalDraws = drawsList.reduce((a,d) => a + d.amount, 0);
+    const totalDraws = txList.filter(t=>t.type==='draw').reduce((a,d) => a + d.amount, 0);
     const max = Math.max(0, earned - totalDraws);
-    return { days, earned, advance: 0, draws: totalDraws, max, cycle };
+    return { days, earned, advance: 0, draws: totalDraws, max, cycle, ptHours };
   },
   payslip(id,m,y,cycle){
     const emp=DB.getEmployee(id); if(!emp) return null;
-    const dailyWage = Math.round(emp.base_salary/30);
+    const isPT = emp.emp_type === 'parttime';
+    const dailyWage = isPT ? 0 : Math.round(emp.base_salary/30);
     const dInM = daysInMonth(m, y);
-    const s = dailyWage * dInM;
-    const adv = dailyWage * 15;
-    const rem = s - adv;
+    const s = isPT ? 0 : (dailyWage * dInM);
+    const adv = isPT ? 0 : (dailyWage * 15);
+    const rem = isPT ? 0 : (s - adv);
     
-    if(cycle===1) return {emp,cycle,month:m,year:y,salary_base:s,advance:adv,net_pay:adv};
+    if(cycle===1 && !isPT) return {emp,cycle,month:m,year:y,salary_base:s,advance:adv,net_pay:adv};
     
     const att=this.summary(id,m,y);
-    const draws=DB.getDrawByEmp(id,m,y);
-    const drawT=draws.reduce((a,d)=>a+d.amount,0);
-    const otN=Math.round(this.otAmt(emp.base_salary,att.otNorm,'normal'));
-    const otH=Math.round(this.otAmt(emp.base_salary,att.otHol,'holiday'));
+    const tx=DB.getTxByEmp(id,m,y);
+    const drawT=tx.filter(t=>t.type==='draw').reduce((a,d)=>a+d.amount,0);
+    const deductT=tx.filter(t=>t.type==='deduct').reduce((a,d)=>a+d.amount,0);
+    
+    // PT specific earnings
+    let ptEarned = 0;
+    let ptHours = 0;
+    if (isPT) {
+      const recs = DB.getAttByEmp(id,m,y);
+      recs.forEach(r=>{ if(r.status==='present'||r.status==='late') ptHours+=(r.work_hours||0); });
+      ptEarned = Math.floor(ptHours * (emp.hourly_rate||0));
+    }
+    
+    const baseToCalcOT = isPT ? 0 : emp.base_salary;
+    const otN=Math.round(this.otAmt(baseToCalcOT,att.otNorm,'normal'));
+    const otH=Math.round(this.otAmt(baseToCalcOT,att.otHol,'holiday'));
     const otT=otN+otH;
     const dili=(att.absent===0&&att.late===0)?(emp.allowance_diligent||0):0;
-    const gross=rem+otT+dili;
+    // Sum daily bonuses from attendance records
+    const dailyBonuses = DB.getAttByEmp(id,m,y).reduce((sum,r) => sum + (r.bonus||0), 0);
+    
+    const gross = isPT ? (ptEarned + otT + dili + dailyBonuses) : (rem + otT + dili + dailyBonuses);
     const tax=0;
-    const absD=Math.round(dailyWage*att.absent);
-    const latD=Math.round(att.lateMin*CFG.lateDeduct);
+    const absD = isPT ? 0 : Math.round(dailyWage*att.absent);
+    const latD = isPT ? 0 : Math.round(att.lateMin*CFG.lateDeduct);
     const loan=emp.loan_monthly||0;
-    const totD=absD+latD+loan+drawT;
+    const totD = absD + latD + loan + drawT + deductT;
     
     return{emp,cycle,month:m,year:y,salary_base:s,advance_paid:adv,salary_rem:rem,
+      pt_hours:ptHours, pt_earned:ptEarned,
       ot_norm:otN,ot_hol:otH,ot_total:otT,ot_norm_h:att.otNorm,ot_hol_h:att.otHol,
-      diligent:dili,draw_total:drawT,draws:draws,gross,
+      diligent:dili,daily_bonuses:dailyBonuses,draw_total:drawT, deduct_total:deductT, tx:tx, gross,
       tax_deduct:tax,abs_deduct:absD,absent_days:att.absent,
       late_deduct:latD,late_min:att.lateMin,loan_deduct:loan,
       total_deduct:totD,net_pay:Math.max(0,gross-totD),att};
@@ -226,7 +255,7 @@ const Calc={
 
 /* ======= NAVIGATION ======= */
 function navigate(page){S.prevPage=S.page;S.page=page;renderPage(page);}
-function goBack(){navigate(S.prevPage||'dashboard');}
+function goBack(){navigate(S.prevPage||'calendar');}
 
 function renderPage(page){
   const $c=document.getElementById('content');
@@ -236,18 +265,16 @@ function renderPage(page){
 
   document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
 
-
-
   $back.style.visibility='hidden';$act.style.visibility='hidden';$act.onclick=null;
-  const titles={dashboard:'หน้าหลัก',attendance:'เช็คชื่อพนักงาน',expense:'ใบเบิก / ลงบิล',payroll:'ประมวลผลเงินเดือน',employees:'รายชื่อพนักงาน','emp-detail':'ข้อมูลพนักงาน',menu:'เมนู'};
+  const titles={calendar:'ปฏิทิน','daily-manage':'จัดการรายวัน',payroll:'สรุปยอด',employees:'รายชื่อพนักงาน','emp-detail':'ข้อมูลพนักงาน',menu:'เมนู'};
   $title.textContent=titles[page]||page;
 
   switch(page){
-    case'dashboard':  $c.innerHTML=renderDashboard(); break;
-    case'attendance': $c.innerHTML=S.att.mode==='daily'?renderDailyAtt():renderMonthlyAtt(); break;
-
+    case'calendar':   $c.innerHTML=renderCalendar(); break;
+    case'daily-manage':
+      $back.style.visibility='visible';
+      $c.innerHTML=renderDailyManage(); break;
     case'payroll':    $c.innerHTML=renderPayroll(); break;
-    case'menu':       $c.innerHTML=renderMenu(); break;
     case'employees':
       $act.style.visibility='visible';
       $act.querySelector('i').className='fas fa-user-plus';
@@ -256,318 +283,443 @@ function renderPage(page){
     case'emp-detail':
       $back.style.visibility='visible';
       $c.innerHTML=renderEmpDetail(S.emp.selectedId); break;
+    case'qr':
+      showSharedQR();
+      S.page = S.prevPage || 'calendar';
+      document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===S.page));
+      break;
   }
   $c.classList.remove('fade-in'); void $c.offsetWidth; $c.classList.add('fade-in');
   $c.scrollTop=0; bindEvents();
 }
 
 /* ======= RENDER: DASHBOARD ======= */
-function renderDashboard(){
-  const now=new Date();
-  const day=now.getDate(),m=now.getMonth()+1,y=now.getFullYear();
-  const emps=DB.getEmployees().filter(e=>e.status==='active');
-  const totalSal=emps.reduce((s,e)=>s+e.base_salary,0);
-  const todayRecs=DB.getAttByDate(todayKey());
-  const cnts={
-    present:todayRecs.filter(r=>r.status==='present').length,
-    late:   todayRecs.filter(r=>r.status==='late').length,
-    absent: todayRecs.filter(r=>r.status==='absent').length,
-    leave:  todayRecs.filter(r=>['sick_leave','personal_leave','annual_leave'].includes(r.status)).length,
-  };
-  const isAfter15=day>CFG.payDay;
-  const nextDate=isAfter15?daysInMonth(m,y):CFG.payDay;
-  const daysLeft=nextDate-day;
-  const cycleNum=isAfter15?2:1;
-
-  // Stories: attendance status ring per employee
-  const storiesHtml=emps.map(emp=>{
-    const rec=DB.getAttRec(emp.id,todayKey());
-    const st=rec?.status||'none';
-    const srClass=`sr-${st.replace('_leave','')||'none'}`;
-    const stLbl={present:'✅ มาแล้ว',late:'⏰ มาสาย',absent:'❌ ขาด',sick_leave:'🏥 ลาป่วย',personal_leave:'📝 ลากิจ',annual_leave:'🏖️ พักร้อน',holiday:'🎌 หยุด',none:'ยังไม่บันทึก'}[st]||st;
-    return `
-    <div class="story-item" onclick="navigate('attendance')">
-      <div class="story-ring ${srClass}">
-        <div class="story-inner" style="background:${emp.avatar_color}">${emp.emoji||initials(emp.name)}</div>
-      </div>
-      <span class="story-name">${emp.name.split(' ')[0]}</span>
-      <span class="story-status-label" style="color:${stColor(st)};font-size:9px">${stLbl.split(' ').slice(-1)[0]||''}</span>
-    </div>`;
-  }).join('');
-
-  return `
-  <!-- Greeting -->
-  <div style="padding:16px 16px 8px; display:flex; justify-content:space-between; align-items:flex-end;">
-    <div>
-      <div class="dash-welcome" style="font-size:22px;font-weight:900;letter-spacing:-0.02em;color:var(--t1)">วัน${TH_WEEKDAYS[now.getDay()]} ${day} ${TH_MONTHS_S[m-1]} ${y+543}</div>
-      <div class="dash-company" style="font-size:14px;color:var(--t2);font-weight:600;margin-top:2px">${CFG.company}</div>
-    </div>
-    <button class="btn" style="padding:8px 16px;border-radius:var(--r-lg);background:var(--blue)15;color:var(--blue);font-weight:bold;border:none;box-shadow:none;" onclick="showSharedQR()">
-      <i class="fas fa-qrcode"></i> QR ลงเวลา
-    </button>
-  </div>
-
-  <!-- Today stat bar -->
-  <div style="padding:0 16px 16px">
-    <div style="display:flex;gap:0;background:var(--surface);border-radius:var(--r-xl);box-shadow:0 4px 16px rgba(0,0,0,.04);overflow:hidden;border:1px solid var(--border)">
-      <div class="att-stat-item" onclick="navigate('attendance')" style="flex:1;padding:16px 4px;text-align:center;border-right:1px solid var(--border)">
-        <div class="att-stat-num" style="color:var(--green);font-size:24px;font-weight:900;letter-spacing:-0.02em">${cnts.present}</div>
-        <div class="att-stat-lbl" style="font-size:12px;margin-top:4px;color:var(--t2);font-weight:600">มาทำงาน</div>
-      </div>
-      <div class="att-stat-item" onclick="navigate('attendance')" style="flex:1;padding:16px 4px;text-align:center;border-right:1px solid var(--border)">
-        <div class="att-stat-num" style="color:var(--yellow);font-size:24px;font-weight:900;letter-spacing:-0.02em">${cnts.late}</div>
-        <div class="att-stat-lbl" style="font-size:12px;margin-top:4px;color:var(--t2);font-weight:600">มาสาย</div>
-      </div>
-      <div class="att-stat-item" onclick="navigate('attendance')" style="flex:1;padding:16px 4px;text-align:center;border-right:1px solid var(--border)">
-        <div class="att-stat-num" style="color:var(--red);font-size:24px;font-weight:900;letter-spacing:-0.02em">${cnts.absent}</div>
-        <div class="att-stat-lbl" style="font-size:12px;margin-top:4px;color:var(--t2);font-weight:600">ขาดงาน</div>
-      </div>
-      <div class="att-stat-item" onclick="navigate('attendance')" style="flex:1;padding:16px 4px;text-align:center">
-        <div class="att-stat-num" style="color:var(--t3);font-size:24px;font-weight:900;letter-spacing:-0.02em">${emps.length-cnts.present-cnts.late-cnts.absent-cnts.leave}</div>
-        <div class="att-stat-lbl" style="font-size:12px;margin-top:4px;color:var(--t2);font-weight:600">ยังไม่บันทึก</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Countdown Card -->
-  <div class="fb-section" style="padding:12px 16px">
-    <div class="countdown-card">
-      <div class="cd-label"><i class="fas fa-calendar-alt"></i> ${isAfter15?'จ่ายสิ้นเดือน':'จ่ายวันที่ 15'} ${TH_MONTHS_S[m-1]} ${y+543}</div>
-      <div class="cd-sub">รอบจ่ายเงินที่ ${cycleNum} กำลังจะถึง</div>
-      <div class="cd-row">
-        <div>
-          <div class="cd-num">${daysLeft}</div>
-          <div class="cd-unit">วัน</div>
-        </div>
-        <div class="cycle-badges">
-          <div class="cycle-badge ${cycleNum===1?'active-cycle':''}" onclick="navigate('payroll');setTimeout(()=>setPayCycle(1),80)">
-            <div class="cy-date">15</div><div class="cy-label">รอบ 1</div>
-          </div>
-          <div class="cycle-badge ${cycleNum===2?'active-cycle':''}" onclick="navigate('payroll');setTimeout(()=>setPayCycle(2),80)">
-            <div class="cy-date">${daysInMonth(m,y)}</div><div class="cy-label">รอบ 2</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Stories: Today's attendance -->
-  <div class="fb-section">
-    <div class="fb-section-header">
-      <div class="fb-section-title">การเข้างานวันนี้</div>
-      <button class="fb-section-action" onclick="navigate('attendance')">จัดการ</button>
-    </div>
-    <div class="stories-row">${storiesHtml}</div>
-  </div>
-
-  <!-- Quick Stats -->
-  <div class="fb-section" style="padding:12px 16px">
-    <div class="stats-grid">
-      <div class="stat-card" onclick="navigate('employees')">
-        <div class="stat-icon ic-blue"><i class="fas fa-users"></i></div>
-        <div class="stat-value">${emps.length}</div>
-        <div class="stat-label">พนักงานทั้งหมด</div>
-      </div>
-      <div class="stat-card" onclick="navigate('payroll')">
-        <div class="stat-icon ic-green"><i class="fas fa-wallet"></i></div>
-        <div class="stat-value" style="font-size:18px">${fmt.moneyK(totalSal)}</div>
-        <div class="stat-label">ยอดเงินเดือน/เดือน</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Quick Actions -->
-  <div class="fb-section">
-    <div class="fb-section-header">
-      <div class="fb-section-title">ทางลัด</div>
-    </div>
-    <div class="quick-actions">
-      <button class="qa-btn" onclick="navigate('attendance')">
-        <div class="qa-icon ic-green"><i class="fas fa-calendar-check"></i></div>
-        <span>เช็คชื่อ</span>
-      </button>
-      <button class="qa-btn" onclick="navigate('employees')">
-        <div class="qa-icon ic-yellow">
-          <i class="fas fa-hand-holding-usd"></i>
-        </div>
-        <span>เบิกเงิน</span>
-      </button>
-      <button class="qa-btn" onclick="navigate('payroll')">
-        <div class="qa-icon ic-blue"><i class="fas fa-file-invoice-dollar"></i></div>
-        <span>เงินเดือน</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Employee List -->
-  <div class="fb-section" style="margin-bottom:0">
-    <div class="fb-section-header">
-      <div class="fb-section-title">พนักงานทั้งหมด</div>
-      <button class="fb-section-action" onclick="navigate('employees')">ดูทั้งหมด</button>
-    </div>
-    ${emps.map(emp=>{
-      const rec=DB.getAttRec(emp.id,todayKey());
-      return `
-      <div class="list-item" onclick="navigate('attendance')">
-        <div class="avatar" style="background:${emp.avatar_color}">${emp.emoji||initials(emp.name)}</div>
-        <div class="li-content">
-          <div class="li-title">${emp.name}</div>
-          <div class="li-sub">${emp.department}</div>
-        </div>
-        ${rec?statusBadge(rec.status):'<span class="badge badge-draft">ยังไม่บันทึก</span>'}
-      </div>`;
-    }).join('')}
-  </div>
-  <div style="height:80px"></div>`;
-}
-
-/* ======= RENDER: DAILY ATTENDANCE ======= */
-function renderDailyAtt(){
-  const {date}=S.att;
-  const emps=DB.getEmployees().filter(e=>e.status==='active');
-  const dt=new Date(date+'T00:00:00');
-  const dStr=`${dt.getDate()} ${TH_MONTHS_F[dt.getMonth()]} ${dt.getFullYear()+543}`;
-  const recs=DB.getAttByDate(date);
-  const cnts={
-    present:recs.filter(r=>r.status==='present').length,
-    late:   recs.filter(r=>r.status==='late').length,
-    absent: recs.filter(r=>r.status==='absent').length,
-    leave:  recs.filter(r=>['sick_leave','personal_leave','annual_leave'].includes(r.status)).length,
-  };
-  // simplified ui
-
-  return `
-  <div class="att-controls">
-    <div class="date-nav">
-      <button class="date-nav-btn" onclick="attDateMove(-1)"><i class="fas fa-chevron-left"></i></button>
-      <div class="date-disp">${dStr}</div>
-      <button class="date-nav-btn" onclick="attDateMove(1)"><i class="fas fa-chevron-right"></i></button>
-    </div>
-    <div class="view-toggle">
-      <button class="vt-btn active" onclick="attMode('daily')">รายวัน</button>
-      <button class="vt-btn" onclick="attMode('monthly')">ปฏิทิน</button>
-    </div>
-  </div>
-
-  <!-- Summary Chips -->
-  <div style="display:flex;background:var(--surface);border-bottom:1px solid var(--border)">
-    <div class="att-stat-item" style="border-right:1px solid var(--border)">
-      <div class="att-stat-num" style="color:var(--green)">${cnts.present}</div>
-      <div class="att-stat-lbl">มาทำงาน</div>
-    </div>
-    <div class="att-stat-item" style="border-right:1px solid var(--border)">
-      <div class="att-stat-num" style="color:var(--yellow)">${cnts.late}</div>
-      <div class="att-stat-lbl">มาสาย</div>
-    </div>
-    <div class="att-stat-item" style="border-right:1px solid var(--border)">
-      <div class="att-stat-num" style="color:var(--red)">${cnts.absent}</div>
-      <div class="att-stat-lbl">ขาดงาน</div>
-    </div>
-    <div class="att-stat-item">
-      <div class="att-stat-num" style="color:var(--t2)">${cnts.leave}</div>
-      <div class="att-stat-lbl">ลา</div>
-    </div>
-  </div>
-
-  <!-- Employee rows -->
-  <div class="fb-section" style="margin-bottom:0">
-    ${emps.map(emp=>{
-      const rec=DB.getAttRec(emp.id,date);
-      const st=rec?.status||'';
-      return `
-      <div class="list-item" style="align-items:center;padding:16px;cursor:pointer" onclick="showDayModal('${emp.id}','${date}')">
-        <div class="avatar" style="background:${emp.avatar_color};box-shadow:0 2px 8px ${emp.avatar_color}44">${emp.emoji||initials(emp.name)}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:15px;font-weight:700;color:var(--t1)">${emp.name}</div>
-          <div style="font-size:12px;color:var(--t2);margin-top:2px">${emp.department}</div>
-          ${rec?.ot_hours?`<div style="font-size:11px;color:var(--orange);font-weight:700;margin-top:4px"><i class="fas fa-fire-alt"></i> OT ${rec.ot_hours} ชม.</div>`:''}
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          ${rec?statusBadge(rec.status):`<button class="btn btn-success btn-xs" style="padding:8px 16px;border-radius:16px;font-weight:700;font-size:12px;letter-spacing:0;box-shadow:0 2px 6px rgba(66,183,42,.2)" onclick="event.stopPropagation();quickSetStatus('${emp.id}','${date}','present')"><i class="fas fa-check"></i> มาทำงาน</button>`}
-          ${rec?`<i class="fas fa-chevron-right" style="color:var(--t3);font-size:14px;margin-left:4px"></i>`:''}
-        </div>
-      </div>`;
-    }).join('')}
-  </div>
-  <div style="height:80px"></div>`;
-}
-
-/* ======= RENDER: MONTHLY ATTENDANCE ======= */
-function renderMonthlyAtt(){
-  const {month,year,empId}=S.att;
-  const emps=DB.getEmployees().filter(e=>e.status==='active');
-  const emp=empId?DB.getEmployee(empId):emps[0];
-  if(!emp) return '<div class="empty-state"><div class="empty-icon-wrap"><i class="fas fa-users"></i></div><h3>ไม่พบพนักงาน</h3></div>';
-
-  const recs=DB.getAttByEmp(emp.id,month,year);
-  const rMap={};recs.forEach(r=>{rMap[parseInt(r.date.split('-')[2])]=r;});
-  const total=daysInMonth(month,year),firstDow=firstDOW(month,year),todayK=todayKey();
-
-  const cells=Array(firstDow).fill('<div></div>');
-  for(let d=1;d<=total;d++){
-    const dk=`${year}-${z2(month)}-${z2(d)}`;
-    const rec=rMap[d],isT=dk===todayK,fut=dk>todayK;
-    cells.push(`
-    <div class="cal-cell ${isT?'today':''}" ${rec?`data-status="${rec.status}"`:''}
-      onclick="showDayModal('${emp.id}','${dk}')" ${fut?'style="opacity:.35"':''}>
-      <span class="cal-date">${d}</span>
-      ${rec?.ot_hours?`<div class="cal-dot" style="background:var(--orange)"></div>`:''}
-    </div>`);
+/* ======= RENDER: CALENDAR ======= */
+function renderCalendar() {
+  const now = new Date();
+  const m = S.att.month || now.getMonth() + 1;
+  const y = S.att.year || now.getFullYear();
+  
+  const dim = daysInMonth(m, y);
+  const fd = firstDOW(m, y);
+  
+  const emps = DB.getEmployees().filter(e=>e.status==='active');
+  const selEmp = S.att.empId || 'ALL';
+  
+  let txs = DB.getTx();
+  let atts = DB.getAttendance();
+  if (selEmp !== 'ALL') {
+    txs = txs.filter(t => t.employee_id === selEmp);
+    atts = atts.filter(a => a.employee_id === selEmp);
   }
 
-  const sum=Calc.summary(emp.id,month,year);
+  // Status-to-color mapping for calendar cells
+  const statusBg = {
+    present:   {bg:'#dcfce7', border:'#86efac', text:'#166534'},
+    late:      {bg:'#fef9c3', border:'#fde047', text:'#854d0e'},
+    absent:    {bg:'#fee2e2', border:'#fca5a5', text:'#991b1b'},
+    sick_leave:{bg:'#dbeafe', border:'#93c5fd', text:'#1e40af'},
+    personal_leave:{bg:'#e0e7ff', border:'#a5b4fc', text:'#3730a3'},
+    annual_leave:{bg:'#f3e8ff', border:'#c4b5fd', text:'#6b21a8'},
+    holiday:   {bg:'#f4f4f5', border:'#d4d4d8', text:'#71717a'},
+  };
+
+  let calHtml = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;text-align:center;">';
+  TH_DAYS_S.forEach(d => calHtml += `<div style="font-size:11px;color:var(--t3);font-weight:800;padding:6px 0;text-transform:uppercase;">${d}</div>`);
+  
+  for(let i=0; i<fd; i++) calHtml += '<div></div>';
+  
+  for(let d=1; d<=dim; d++) {
+    const dStr = `${y}-${z2(m)}-${z2(d)}`;
+    const isToday = dStr === todayKey();
+    const isFuture = new Date(dStr) > new Date(todayKey());
+    
+    const dayAtts = atts.filter(a=>a.date === dStr);
+    const dayTxs = txs.filter(t=>t.date === dStr);
+    
+    // Determine dominant status for cell coloring
+    let cellBg = 'var(--surface)';
+    let cellBorder = 'var(--border)';
+    let cellText = 'var(--t1)';
+    let statusIcon = '';
+    
+    if (dayAtts.length > 0) {
+      // For single employee view
+      if (selEmp !== 'ALL' && dayAtts.length === 1) {
+        const st = dayAtts[0].status;
+        if (statusBg[st]) {
+          cellBg = statusBg[st].bg;
+          cellBorder = statusBg[st].border;
+          cellText = statusBg[st].text;
+        }
+      } else {
+        // For ALL view, pick the "worst" status to color
+        const hasAbsent = dayAtts.some(a=>a.status==='absent');
+        const hasLate = dayAtts.some(a=>a.status==='late');
+        const hasLeave = dayAtts.some(a=>['sick_leave','personal_leave','annual_leave'].includes(a.status));
+        const hasHoliday = dayAtts.some(a=>a.status==='holiday');
+        const checkedIn = dayAtts.length;
+        
+        if (hasAbsent) {
+          cellBg = '#fee2e2'; cellBorder = '#fca5a5'; cellText = '#991b1b';
+        } else if (hasLate) {
+          cellBg = '#fef9c3'; cellBorder = '#fde047'; cellText = '#854d0e';
+        } else if (hasLeave) {
+          cellBg = '#dbeafe'; cellBorder = '#93c5fd'; cellText = '#1e40af';
+        } else if (hasHoliday && dayAtts.every(a=>a.status==='holiday')) {
+          cellBg = '#f4f4f5'; cellBorder = '#d4d4d8'; cellText = '#71717a';
+        } else if (checkedIn > 0) {
+          cellBg = '#dcfce7'; cellBorder = '#86efac'; cellText = '#166534';
+        }
+      }
+    }
+    
+    // Today override
+    if (isToday) {
+      cellBg = '#18181B';
+      cellBorder = '#18181B';
+      cellText = '#ffffff';
+    }
+    
+    // Transaction logic for GOLD styling (Only for individual view)
+    let dots = '';
+    const dayDraws = dayTxs.filter(t=>t.type==='draw');
+    const hasDraw = selEmp !== 'ALL' && dayDraws.length > 0;
+    const drawTotal = dayDraws.reduce((sum, t) => sum + t.amount, 0);
+
+    if (hasDraw) {
+      cellBg = '#fef08a'; // Gold background
+      cellBorder = '#facc15';
+      cellText = '#854d0e';
+    }
+    
+    if (selEmp !== 'ALL' && dayTxs.some(t=>t.type==='deduct')) dots += '<div style="width:4px;height:4px;border-radius:50%;background:#f97316;display:inline-block;margin:0 1px;"></div>';
+    if (selEmp !== 'ALL' && dayTxs.some(t=>t.type==='bonus')) dots += '<div style="width:4px;height:4px;border-radius:50%;background:#eab308;display:inline-block;margin:0 1px;"></div>';
+    
+    calHtml += `
+      <div onclick="S.att.date='${dStr}'; navigate('daily-manage')" 
+           style="aspect-ratio:1;border-radius:10px;background:${cellBg};border:1.5px solid ${cellBorder};display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:transform .15s ease,box-shadow .15s ease;"
+           onmousedown="this.style.transform='scale(0.92)'" onmouseup="this.style.transform=''" onmouseleave="this.style.transform=''">
+        <span style="font-size:14px;font-weight:800;color:${cellText};line-height:1;margin-bottom:${hasDraw?'8px':'0'};">${d}</span>
+        ${hasDraw ? `<div style="font-size:9px;font-weight:900;color:#854d0e;position:absolute;bottom:4px;">-${drawTotal}</div>` : ''}
+        ${!hasDraw ? `<div style="position:absolute;bottom:3px;left:0;right:0;text-align:center;height:5px;display:flex;justify-content:center;align-items:center;">${dots}</div>` : ''}
+      </div>
+    `;
+  }
+  calHtml += '</div>';
 
   return `
-  <div class="att-controls">
-    <div class="date-nav">
-      <button class="date-nav-btn" onclick="attMonthMove(-1)"><i class="fas fa-chevron-left"></i></button>
-      <div class="date-disp">${fmt.monthY(month,year)}</div>
-      <button class="date-nav-btn" onclick="attMonthMove(1)"><i class="fas fa-chevron-right"></i></button>
+  <div style="padding:16px;padding-bottom:100px;">
+    <div style="margin-bottom:16px;">
+      <select class="form-select" style="font-size:15px;font-weight:700;padding:12px 40px 12px 16px;" onchange="S.att.empId=this.value; renderPage('calendar')">
+        <option value="ALL" ${selEmp==='ALL'?'selected':''}>👨‍👩‍👧‍👦 ทุกคนรวมกัน</option>
+        ${emps.map(e=>`<option value="${e.id}" ${selEmp===e.id?'selected':''}>${e.emoji||'👤'} ${e.name}</option>`).join('')}
+      </select>
     </div>
-    <div class="view-toggle">
-      <button class="vt-btn" onclick="attMode('daily')">รายวัน</button>
-      <button class="vt-btn active" onclick="attMode('monthly')">ปฏิทิน</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="margin:0;font-size:20px;color:var(--t1);font-weight:900;">${selEmp==='ALL'?'ภาพรวมบริษัท':'ปฏิทินพนักงาน'}</h2>
+      <div style="display:flex;align-items:center;gap:8px;background:var(--surface);padding:4px;border-radius:var(--r-full);border:1px solid var(--border);">
+        <button class="btn" style="width:32px;height:32px;padding:0;border-radius:50%;background:var(--primary-bg);" onclick="S.att.month--;if(S.att.month<1){S.att.month=12;S.att.year--;}renderPage('calendar')"><i class="fas fa-chevron-left" style="font-size:12px;"></i></button>
+        <span style="font-weight:800;font-size:14px;min-width:120px;text-align:center;">${fmt.monthY(m,y)}</span>
+        <button class="btn" style="width:32px;height:32px;padding:0;border-radius:50%;background:var(--primary-bg);" onclick="S.att.month++;if(S.att.month>12){S.att.month=1;S.att.year++;}renderPage('calendar')"><i class="fas fa-chevron-right" style="font-size:12px;"></i></button>
+      </div>
     </div>
-  </div>
-
-  <div class="fb-section" style="padding:10px 14px;border-bottom:1px solid var(--border)">
-    <select class="form-select" onchange="attEmpChange(this.value)">
-      ${emps.map(e=>`<option value="${e.id}" ${e.id===emp.id?'selected':''}>${e.name}</option>`).join('')}
-    </select>
-  </div>
-
-  <div class="fb-section">
-    <div class="cal-hd">
-      ${TH_DAYS_S.map((d,i)=>`<div class="cal-day-name" style="${i===0||i===6?'color:var(--red)':''}">${d}</div>`).join('')}
+    
+    <div style="background:var(--surface);border-radius:var(--r-xl);padding:14px;box-shadow:0 2px 12px rgba(0,0,0,.03);border:1px solid var(--border);">
+      ${calHtml}
     </div>
-    <div class="cal-grid">${cells.join('')}</div>
-  </div>
-
-  <div class="status-legend">
-    ${[['var(--green)','มาทำงาน'],['var(--yellow)','มาสาย'],['var(--red)','ขาดงาน'],['var(--blue)','ลาป่วย'],['var(--cyan)','ลากิจ'],['var(--purple)','พักร้อน'],['var(--orange)','มี OT']].map(([c,l])=>
-      `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}</div>`).join('')}
-  </div>
-
-  <!-- Monthly Summary -->
-  <div class="fb-section" style="padding:14px 16px">
-    <div class="fb-section-title" style="margin-bottom:12px">สรุป${TH_MONTHS_F[month-1]}</div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-      ${[['var(--green)',sum.present,'วันมา'],['var(--yellow)',sum.late,'มาสาย'],['var(--red)',sum.absent,'ขาดงาน'],
-         ['var(--blue)',sum.sick,'ลาป่วย'],['var(--cyan)',sum.personal,'ลากิจ'],['var(--orange)',sum.otTotal+'ชม.','OT รวม']
-      ].map(([c,v,l])=>`
-        <div class="stat-card" style="padding:12px">
-          <div class="stat-value" style="font-size:20px;color:${c}">${v}</div>
-          <div class="stat-label">${l}</div>
-        </div>`).join('')}
+    
+    <div style="margin-top:12px;padding:14px 16px;background:var(--surface);border-radius:var(--r-xl);font-size:11px;color:var(--t2);border:1px solid var(--border);">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;border-radius:4px;background:#dcfce7;border:1px solid #86efac;"></div> มาทำงาน</div>
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;border-radius:4px;background:#fef9c3;border:1px solid #fde047;"></div> มาสาย</div>
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;border-radius:4px;background:#fee2e2;border:1px solid #fca5a5;"></div> ขาด</div>
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;border-radius:4px;background:#dbeafe;border:1px solid #93c5fd;"></div> ลา</div>
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;border-radius:4px;background:#f4f4f5;border:1px solid #d4d4d8;"></div> หยุด</div>
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;border-radius:4px;background:#18181B;"></div> วันนี้</div>
+        <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;border-radius:4px;background:#fef08a;border:1px solid #facc15;"></div> มีเบิกเงิน</div>
+      </div>
     </div>
   </div>
-  <div style="height:80px"></div>`;
+  `;
 }
 
-/* ======= RENDER: EXPENSE ======= */
-function renderExpense(){ return ''; }
+function renderDailyManage() {
+  const dStr = S.att.date;
+  let emps = DB.getEmployees().filter(e=>e.status==='active');
+  const selEmp = S.att.empId || 'ALL';
+  
+  if (selEmp !== 'ALL') {
+    emps = emps.filter(e => e.id === selEmp);
+  }
 
-/* ======= RENDER: PAYROLL ======= */
+  const dayAtts = DB.getAttByDate(dStr);
+  const dayTxs = DB.getTx().filter(t=>t.date === dStr);
+  
+  let listHtml = '';
+  emps.forEach(emp => {
+    const att = dayAtts.find(a=>a.employee_id === emp.id);
+    const txs = dayTxs.filter(t=>t.employee_id === emp.id);
+    const draws = txs.filter(t=>t.type==='draw').reduce((s,t)=>s+t.amount,0);
+    const deducts = txs.filter(t=>t.type==='deduct').reduce((s,t)=>s+t.amount,0);
+    const bonusAmt = att?.bonus || 0;
+    
+    let stHtml = '';
+    if(!att || att.status==='none') {
+      stHtml = '<span style="color:var(--t3);font-size:13px;">ยังไม่เช็คชื่อ</span>';
+    } else {
+      const isPT = emp.emp_type === 'parttime';
+      const lbl = {present:'มาทำงาน',late:'มาสาย',absent:'ขาดงาน',sick_leave:'ลาป่วย',personal_leave:'ลากิจ',annual_leave:'พักร้อน',holiday:'วันหยุด'}[att.status]||att.status;
+      const c = att.status==='present'?'var(--green)':att.status==='late'?'var(--yellow)':'var(--red)';
+      stHtml = `<span style="color:${c};font-size:13px;font-weight:700;">${lbl}${isPT && (att.status==='present'||att.status==='late') ? ` (${att.work_hours||0} ชม.)` : ''}</span>`;
+    }
+    
+    let txHtml = '';
+    if (bonusAmt > 0) txHtml += `<span style="background:var(--primary-bg);color:var(--t1);padding:2px 6px;border-radius:4px;font-size:11px;margin-right:4px;">⭐ +${fmt.money(bonusAmt)}</span>`;
+    if (draws > 0) txHtml += `<span style="background:var(--primary-bg);color:var(--t1);padding:2px 6px;border-radius:4px;font-size:11px;margin-right:4px;">เบิก ${fmt.money(draws)}</span>`;
+    if (deducts > 0) txHtml += `<span style="background:var(--primary-bg);color:var(--t2);padding:2px 6px;border-radius:4px;font-size:11px;">หัก ${fmt.money(deducts)}</span>`;
+    
+    listHtml += `
+      <div style="display:flex;align-items:center;padding:12px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="openEmpDailyModal('${emp.id}')">
+        <div class="avatar" style="background:${emp.avatar_color};margin-right:12px;">${emp.emoji||initials(emp.name)}</div>
+        <div style="flex:1;">
+          <div style="font-weight:700;color:var(--t1);">${emp.name}</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+            ${stHtml}
+            ${txHtml}
+          </div>
+        </div>
+        <i class="fas fa-chevron-right" style="color:var(--t3);"></i>
+      </div>
+    `;
+  });
+  
+  // Count stats
+  const totalEmps = emps.length;
+  const checkedCount = emps.filter(e => dayAtts.find(a => a.employee_id === e.id && a.status !== 'none')).length;
+  const uncheckedCount = totalEmps - checkedCount;
+
+  return `
+  <div style="padding:16px;padding-bottom:100px;">
+    <div style="margin-bottom:12px;background:var(--surface);border-radius:var(--r-xl);padding:16px;border:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:18px;font-weight:900;">${fmt.date(dStr)}</h3>
+        <div style="font-size:12px;color:var(--t2);font-weight:700;">
+          เช็คชื่อแล้ว <span style="color:var(--green);font-weight:900;">${checkedCount}</span> / ${totalEmps} คน
+        </div>
+      </div>
+      
+      ${selEmp === 'ALL' ? `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn" style="flex:1;font-size:12px;font-weight:800;padding:10px 8px;background:#dcfce7;color:#166534;border-radius:var(--r-md);border:1px solid #86efac;" onclick="batchCheckIn('present')">
+          <i class="fas fa-check-double"></i> มาทำงานทุกคน
+        </button>
+        <button class="btn" style="flex:1;font-size:12px;font-weight:800;padding:10px 8px;background:#f4f4f5;color:#71717a;border-radius:var(--r-md);border:1px solid #d4d4d8;" onclick="addBatchHoliday()">
+          <i class="fas fa-umbrella-beach"></i> วันหยุดทุกคน
+        </button>
+        <button class="btn" style="font-size:12px;font-weight:800;padding:10px 12px;background:#fee2e2;color:#991b1b;border-radius:var(--r-md);border:1px solid #fca5a5;" onclick="batchClearDay()">
+          <i class="fas fa-eraser"></i>
+        </button>
+      </div>
+      ` : ''}
+    </div>
+    
+    <div style="background:var(--surface);border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--border);">
+      ${listHtml}
+    </div>
+  </div>
+  `;
+}
+
+function openEmpDailyModal(empId) {
+  const emp = DB.getEmployee(empId);
+  if(!emp) return;
+  const dStr = S.att.date;
+  const att = DB.getAttRec(empId, dStr) || {status:'none', late_minutes:0, work_hours:(emp.emp_type==='parttime'?0:8), bonus:0};
+  const txs = DB.getTx().filter(t=>t.employee_id===empId && t.date===dStr);
+  const isPT = emp.emp_type === 'parttime';
+  const dailyWage = isPT ? Math.round((att.work_hours || 0) * (emp.hourly_rate || 0)) : Math.round((emp.base_salary || 0) / 30);
+  
+  openModal(`
+    <div style="padding:4px 0;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <div class="avatar" style="background:${emp.avatar_color}">${emp.emoji||initials(emp.name)}</div>
+        <div>
+          <div style="font-weight:800;font-size:16px;">${emp.name}</div>
+          <div style="font-size:13px;color:var(--t2);">${fmt.date(dStr)}</div>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label"><i class="fas fa-clipboard-check"></i> สถานะเข้างาน</label>
+        <select id="modal-att-status" class="form-select" onchange="document.getElementById('pt-hrs-wrap').style.display=(this.value==='present'||this.value==='late')&&'${emp.emp_type}'==='parttime'?'block':'none'; document.getElementById('bonus-wrap').style.display=(this.value==='present')?'block':'none';">
+          <option value="none" ${att.status==='none'?'selected':''}>— ยังไม่ลงเวลา —</option>
+          <option value="present" ${att.status==='present'?'selected':''}>✅ มาทำงาน</option>
+          <option value="late" ${att.status==='late'?'selected':''}>⏰ มาสาย</option>
+          <option value="absent" ${att.status==='absent'?'selected':''}>❌ ขาดงาน</option>
+          <option value="sick_leave" ${att.status==='sick_leave'?'selected':''}>🏥 ลาป่วย</option>
+          <option value="personal_leave" ${att.status==='personal_leave'?'selected':''}>📝 ลากิจ</option>
+          <option value="annual_leave" ${att.status==='annual_leave'?'selected':''}>🏖️ ลาพักร้อน</option>
+          <option value="holiday" ${att.status==='holiday'?'selected':''}>🎌 วันหยุด</option>
+        </select>
+      </div>
+      
+      <div id="pt-hrs-wrap" class="form-group" style="display:${(att.status==='present'||att.status==='late')&&isPT?'block':'none'}">
+        <label class="form-label"><i class="fas fa-clock"></i> ชั่วโมงทำงาน</label>
+        <input type="number" id="modal-att-hrs" class="form-input" step="0.5" min="0" max="24" value="${att.work_hours||0}" placeholder="เช่น 8, 4.5">
+      </div>
+      
+      <div id="bonus-wrap" class="form-group" style="display:${att.status==='present'?'block':'none'}">
+        <label class="form-label"><i class="fas fa-star"></i> เบี้ยขยัน (฿) — กรณีมาเร็ว/ทำงานดี</label>
+        <input type="number" id="modal-att-bonus" class="form-input" min="0" value="${att.bonus||0}" placeholder="0">
+        <div style="font-size:11px;color:var(--t3);margin-top:4px;">ระบุจำนวนเงินเพิ่มพิเศษสำหรับวันนี้ (ไม่บังคับ)</div>
+      </div>
+      
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+        <label class="form-label" style="margin-bottom:10px;"><i class="fas fa-receipt"></i> รายการเบิก / หัก (วันนี้)</label>
+        ${txs.length===0?'<div style="color:var(--t3);font-size:13px;margin-bottom:8px;">ไม่มีรายการ</div>':''}
+        ${txs.map(t=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:var(--r-md);margin-bottom:6px;border:1px solid var(--border);background:var(--primary-bg);">
+            <div>
+              <div style="font-weight:700;font-size:14px;">${t.type==='draw'?'💰 เบิกเงิน':'📉 หักเงิน'} ${fmt.money(t.amount)}</div>
+              <div style="font-size:12px;color:var(--t2);margin-top:2px;">${t.note||'-'}</div>
+            </div>
+            <button class="btn" style="color:var(--t2);padding:8px;" onclick="deleteTxAndRefresh('${t.id}', '${emp.id}')"><i class="fas fa-trash-alt"></i></button>
+          </div>
+        `).join('')}
+        
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn" style="flex:1;font-size:13px;font-weight:700;padding:10px;background:var(--primary-bg);border:1px solid var(--border);border-radius:var(--r-md);" onclick="showAddTx('${emp.id}', 'draw')"><i class="fas fa-plus"></i> เบิกเงิน</button>
+          <button class="btn" style="flex:1;font-size:13px;font-weight:700;padding:10px;background:var(--primary-bg);border:1px solid var(--border);border-radius:var(--r-md);" onclick="showAddTx('${emp.id}', 'deduct')"><i class="fas fa-minus"></i> หักเงิน</button>
+        </div>
+        ${dailyWage > 0 ? `
+        <button class="btn" style="width:100%;margin-top:8px;font-size:13px;font-weight:800;padding:10px;background:#fef08a;color:#854d0e;border:1px solid #facc15;border-radius:var(--r-md);" onclick="payDailyWage('${emp.id}', ${dailyWage})">
+          <i class="fas fa-hand-holding-usd"></i> จ่ายค่าจ้างรายวันทันที (${fmt.money(dailyWage)})
+        </button>` : ''}
+      </div>
+      
+      <button class="btn btn-primary" style="width:100%;margin-top:20px;padding:14px;border-radius:var(--r-lg);font-size:16px;" onclick="saveEmpDaily('${emp.id}')"><i class="fas fa-save"></i> บันทึกข้อมูลวันนี้</button>
+    </div>
+  `);
+}
+
+function saveEmpDaily(empId) {
+  const dStr = S.att.date;
+  const st = document.getElementById('modal-att-status')?.value;
+  const hrs = parseFloat(document.getElementById('modal-att-hrs')?.value) || 0;
+  const bonus = parseFloat(document.getElementById('modal-att-bonus')?.value) || 0;
+  
+  if (!st || st === 'none') {
+    toast('กรุณาเลือกสถานะเข้างาน', 'error');
+    return;
+  }
+  
+  DB.setAttRec(empId, dStr, {status: st, work_hours: hrs, late_minutes: 0, ot_hours: 0, bonus: bonus});
+  
+  // If bonus > 0, auto-add a TX record of type 'bonus'
+  if (bonus > 0) {
+    // Remove old bonus tx for this day first
+    const oldBonusTxs = DB.getTx().filter(t => t.employee_id === empId && t.date === dStr && t.type === 'bonus');
+    oldBonusTxs.forEach(t => DB.deleteTx(t.id));
+    DB.addTx({employee_id: empId, date: dStr, type: 'bonus', amount: bonus, note: 'เบี้ยขยัน (มาเร็ว/ทำงานดี)'});
+  }
+  
+  closeModal();
+  renderPage('daily-manage');
+  toast('บันทึกข้อมูลเรียบร้อย ✅', 'success');
+}
+
+function deleteTxAndRefresh(txId, empId) {
+  if(!confirm('ลบรายการนี้ใช่หรือไม่?')) return;
+  DB.deleteTx(txId);
+  closeModal();
+  setTimeout(() => openEmpDailyModal(empId), 100);
+  toast('ลบรายการแล้ว', 'success');
+}
+
+function showAddTx(empId, type) {
+  const dStr = S.att.date;
+  const label = type==='draw'?'เบิกเงิน':'หักเงิน';
+  const icon = type==='draw'?'hand-holding-usd':'minus-circle';
+  openModal(`
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--primary-bg);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--t1);"><i class="fas fa-${icon}"></i></div>
+      <div style="font-size:20px;font-weight:800;">${label}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">จำนวนเงิน (฿) *</label>
+      <input type="number" class="form-input" id="tx-amount" placeholder="0" min="1" style="font-size:20px;text-align:center;font-weight:800;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">หมายเหตุ</label>
+      <input type="text" class="form-input" id="tx-note" placeholder="เช่น ค่าอาหาร, เบิกค่าเดินทาง">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-neutral" style="flex:1;border-radius:var(--r-md);" onclick="closeModal(); setTimeout(()=>openEmpDailyModal('${empId}'),100);">ยกเลิก</button>
+      <button class="btn btn-primary" style="flex:2;border-radius:var(--r-md);" onclick="submitAddTx('${empId}','${type}')"><i class="fas fa-save"></i> บันทึก</button>
+    </div>
+  `);
+}
+
+function submitAddTx(empId, type) {
+  const amt = parseFloat(document.getElementById('tx-amount')?.value);
+  const note = document.getElementById('tx-note')?.value || '';
+  if(!amt || amt <= 0) { toast('กรุณาระบุจำนวนเงิน', 'error'); return; }
+  const dStr = S.att.date;
+  DB.addTx({employee_id: empId, date: dStr, type: type, amount: amt, note: note});
+  closeModal();
+  setTimeout(() => openEmpDailyModal(empId), 100);
+  toast('เพิ่มรายการแล้ว ✅', 'success');
+}
+
+function payDailyWage(empId, amount) {
+  if(!confirm('บันทึกการจ่ายค่าจ้างรายวัน จำนวน ' + amount + ' บาท ให้พนักงานใช่หรือไม่? (ระบบจะบันทึกเป็นยอดเบิกเงิน)')) return;
+  const dStr = S.att.date;
+  DB.addTx({employee_id: empId, date: dStr, type: 'draw', amount: amount, note: 'รับค่าจ้างรายวัน'});
+  closeModal();
+  setTimeout(() => openEmpDailyModal(empId), 100);
+  toast('บันทึกจ่ายค่าจ้างรายวันแล้ว ✅', 'success');
+}
+
+function addBatchHoliday() {
+  if(!confirm('ตั้งค่าเป็น "วันหยุด" ให้ทุกคนในวันนี้ใช่หรือไม่?')) return;
+  const emps = DB.getEmployees().filter(e=>e.status==='active');
+  emps.forEach(emp => {
+    DB.setAttRec(emp.id, S.att.date, {status: 'holiday', work_hours: 0, late_minutes: 0, ot_hours: 0});
+  });
+  renderPage('daily-manage');
+  toast('อัปเดตวันหยุดสำเร็จ ✅', 'success');
+}
+
+function batchCheckIn(status) {
+  const label = {present:'มาทำงาน',late:'มาสาย',absent:'ขาดงาน',holiday:'วันหยุด'}[status]||status;
+  if(!confirm('เช็คชื่อ "' + label + '" ให้พนักงานทุกคนที่ยังไม่ได้เช็คชื่อ ใช่หรือไม่?')) return;
+  const emps = DB.getEmployees().filter(e=>e.status==='active');
+  const dStr = S.att.date;
+  let count = 0;
+  emps.forEach(emp => {
+    const existing = DB.getAttRec(emp.id, dStr);
+    if (!existing || existing.status === 'none') {
+      const hrs = emp.emp_type === 'parttime' ? 8 : 0;
+      DB.setAttRec(emp.id, dStr, {status: status, work_hours: hrs, late_minutes: 0, ot_hours: 0, bonus: 0});
+      count++;
+    }
+  });
+  renderPage('daily-manage');
+  toast('เช็คชื่อ "' + label + '" ให้ ' + count + ' คนเรียบร้อย ✅', 'success');
+}
+
+function batchClearDay() {
+  if(!confirm('ล้างข้อมูลเช็คชื่อทั้งวันนี้ ใช่หรือไม่? (ข้อมูลเบิก/หักจะไม่ถูกลบ)')) return;
+  const emps = DB.getEmployees().filter(e=>e.status==='active');
+  const dStr = S.att.date;
+  let allAtt = DB.getAttendance();
+  allAtt = allAtt.filter(a => !(a.date === dStr && emps.some(e => e.id === a.employee_id)));
+  DB.saveAttendance(allAtt);
+  renderPage('daily-manage');
+  toast('ล้างข้อมูลเช็คชื่อวันนี้แล้ว', 'success');
+}
+
 function renderPayroll(){
   const {month,year,cycle}=S.pay;
   const emps=DB.getEmployees().filter(e=>e.status==='active');
@@ -680,13 +832,20 @@ function renderEmployees(){
   const total=DB.getEmployees().reduce((s,e)=>s+e.base_salary,0);
 
   return `
-  <!-- Search Bar — Facebook style pill -->
+  <!-- Search Bar -->
   <div class="fb-section" style="padding:10px 14px 12px">
     <div class="fb-search-wrap">
       <i class="fas fa-search icon" style="color:var(--t3)"></i>
       <input type="search" class="fb-search" placeholder="ค้นหาชื่อ แผนก ตำแหน่ง..."
         value="${search}" oninput="empSearch(this.value)">
     </div>
+  </div>
+
+  <!-- Auto Check-in Button -->
+  <div style="padding:0 16px 12px">
+    <button class="btn" style="width:100%;font-size:15px;font-weight:800;padding:14px;background:#dcfce7;color:#166534;border-radius:var(--r-xl);border:1px solid #86efac;box-shadow:0 4px 12px rgba(22,101,52,0.1)" onclick="batchCheckIn('present')">
+      <i class="fas fa-check-double"></i> เช็คชื่อ "มาทำงาน" ให้ทุกคน (วันนี้)
+    </button>
   </div>
 
   <!-- Stats -->
@@ -703,26 +862,24 @@ function renderEmployees(){
     </div>
   </div>
 
-  <!-- Employee List — Facebook Friends list -->
-  <div class="fb-section" style="margin-bottom:0">
-    ${emps.length===0?`
-    <div class="empty-state">
-      <div class="empty-icon-wrap"><i class="fas fa-user-slash"></i></div><h3>ไม่พบพนักงาน</h3>
-      <p>ลองค้นหาด้วยคำอื่น</p>
-    </div>`:
-    emps.map(emp=>`
-    <div class="emp-card" onclick="viewEmpDetail('${emp.id}')">
-      <div class="avatar av-md" style="background:${emp.avatar_color}">${emp.emoji||initials(emp.name)}</div>
-      <div style="flex:1;min-width:0">
-        <div class="emp-name">${emp.name}</div>
-        <div class="emp-dept">${emp.position} &nbsp;·&nbsp; ${emp.department}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div class="emp-salary">${fmt.money(Math.round(emp.base_salary/30))}</div>
-        <div style="font-size:10px;color:var(--t3);font-weight:500">/วัน</div>
-      </div>
-    </div>`).join('')}
-  </div>
+  <!-- Employee Grid -->
+  ${emps.length===0?`
+  <div class="empty-state">
+    <div class="empty-icon-wrap"><i class="fas fa-user-slash"></i></div><h3>ไม่พบพนักงาน</h3>
+    <p>ลองค้นหาด้วยคำอื่น</p>
+  </div>`:
+  `<div class="emp-grid">` +
+  emps.map(emp=>`
+  <div class="emp-square-card" onclick="viewEmpDetail('${emp.id}')">
+    <div class="avatar" style="background:${emp.avatar_color}">${emp.emoji||initials(emp.name)}</div>
+    <div class="emp-name">${emp.name}</div>
+    <div class="emp-dept">${emp.position}</div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);width:100%">
+      <div style="font-size:14px;font-weight:800;color:var(--purple)">${fmt.money(Math.round(emp.base_salary/30))}</div>
+      <div style="font-size:10px;color:var(--t3);font-weight:500">/วัน</div>
+    </div>
+  </div>`).join('') +
+  `</div>`}
   <button class="fab" onclick="showEmpModal(null)"><i class="fas fa-plus"></i></button>
   <div style="height:80px"></div>`;
 }
@@ -733,24 +890,100 @@ function renderEmpDetail(empId){
   if(!emp) return '<div class="empty-state"><div class="empty-icon-wrap"><i class="fas fa-user-slash"></i></div><h3>ไม่พบพนักงาน</h3></div>';
   const m=S.pay.month, y=S.pay.year;
   const sum=Calc.summary(empId,m,y);
-  const draws=DB.getDrawByEmp(empId,m,y);
+  const txs=DB.getTxByEmp(empId,m,y);
+  const draws=txs.filter(t=>t.type==='draw');
+  const deducts=txs.filter(t=>t.type==='deduct');
   const ps=Calc.payslip(empId,m,y,2);
 
   const st = Calc.earnedSoFar(empId, m, y, todayKey());
+  const isPT = emp.emp_type === 'parttime';
+
+  // --- INDIVIDUAL CALENDAR ---
+  const dim = daysInMonth(m, y);
+  const fd = firstDOW(m, y);
+  
+  const statusBg = {
+    present:   {bg:'#dcfce7', border:'#86efac', text:'#166534'},
+    late:      {bg:'#fef9c3', border:'#fde047', text:'#854d0e'},
+    absent:    {bg:'#fee2e2', border:'#fca5a5', text:'#991b1b'},
+    sick_leave:{bg:'#dbeafe', border:'#93c5fd', text:'#1e40af'},
+    personal_leave:{bg:'#e0e7ff', border:'#a5b4fc', text:'#3730a3'},
+    annual_leave:{bg:'#f3e8ff', border:'#c4b5fd', text:'#6b21a8'},
+    holiday:   {bg:'#f4f4f5', border:'#d4d4d8', text:'#71717a'},
+  };
+
+  let calHtml = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;">';
+  TH_DAYS_S.forEach(d => calHtml += `<div style="font-size:11px;color:var(--t3);font-weight:800;padding:4px 0;text-transform:uppercase;">${d}</div>`);
+  
+  for(let i=0; i<fd; i++) calHtml += '<div></div>';
+  
+  let allAtts = DB.getAttendance().filter(a => a.employee_id === empId);
+  
+  for(let d=1; d<=dim; d++) {
+    const dStr = `${y}-${z2(m)}-${z2(d)}`;
+    const isToday = dStr === todayKey();
+    
+    const dayAtts = allAtts.filter(a=>a.date === dStr);
+    const dayTxs = txs.filter(t=>t.date === dStr);
+    
+    let cellBg = 'var(--surface)';
+    let cellBorder = 'var(--border)';
+    let cellText = 'var(--t1)';
+    
+    if (dayAtts.length > 0) {
+      const st = dayAtts[0].status;
+      if (statusBg[st]) {
+        cellBg = statusBg[st].bg;
+        cellBorder = statusBg[st].border;
+        cellText = statusBg[st].text;
+      }
+    }
+    if (isToday) {
+      cellBg = '#18181B';
+      cellBorder = '#18181B';
+      cellText = '#ffffff';
+    }
+    
+    let dots = '';
+    const dayDraws = dayTxs.filter(t=>t.type==='draw');
+    const hasDraw = dayDraws.length > 0;
+    const drawTotal = dayDraws.reduce((sum, t) => sum + t.amount, 0);
+
+    if (hasDraw) {
+      cellBg = '#fef08a'; 
+      cellBorder = '#facc15';
+      cellText = '#854d0e';
+    }
+    
+    if (dayTxs.some(t=>t.type==='deduct')) dots += '<div style="width:4px;height:4px;border-radius:50%;background:#f97316;display:inline-block;margin:0 1px;"></div>';
+    if (dayTxs.some(t=>t.type==='bonus')) dots += '<div style="width:4px;height:4px;border-radius:50%;background:#eab308;display:inline-block;margin:0 1px;"></div>';
+    
+    calHtml += `
+      <div onclick="S.att.date='${dStr}'; S.att.empId='${empId}'; navigate('daily-manage')" 
+           style="aspect-ratio:1;border-radius:6px;background:${cellBg};border:1px solid ${cellBorder};display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:transform .15s ease;">
+        <span style="font-size:12px;font-weight:800;color:${cellText};line-height:1;margin-bottom:${hasDraw?'6px':'0'};">${d}</span>
+        ${hasDraw ? `<div style="font-size:8px;font-weight:900;color:#854d0e;position:absolute;bottom:2px;">-${drawTotal}</div>` : ''}
+        ${!hasDraw ? `<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;height:4px;display:flex;justify-content:center;align-items:center;">${dots}</div>` : ''}
+      </div>
+    `;
+  }
+  calHtml += '</div>';
+  // -------------------------
+
 
   return `
   <div class="emp-detail-cover">
     <div class="avatar av-xl" style="background:${emp.avatar_color};box-shadow:0 4px 20px ${emp.avatar_color}55">${emp.emoji||initials(emp.name)}</div>
     <div class="emp-detail-name">${emp.name}</div>
-    <div class="emp-detail-pos">${emp.position} &nbsp;·&nbsp; ${emp.department}</div>
-    <div class="emp-detail-sal">${fmt.money(Math.round(emp.base_salary/30))}<span style="font-size:14px;color:var(--t2);font-weight:500">/วัน</span></div>
+    <div class="emp-detail-pos">${emp.position} &nbsp;·&nbsp; ${emp.department} ${isPT?'<span class="badge" style="background:var(--blue);color:#fff">พาร์ทไทม์</span>':''}</div>
+    <div class="emp-detail-sal">${isPT ? fmt.money(emp.hourly_rate)+'<span style="font-size:14px;color:var(--t2);font-weight:500">/ชม.</span>' : fmt.money(Math.round(emp.base_salary/30))+'<span style="font-size:14px;color:var(--t2);font-weight:500">/วัน</span>'}</div>
     
     <div style="margin:20px 0 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:16px;text-align:left;position:relative;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.03)">
       <div style="position:absolute;top:50%;left:-10px;width:20px;height:20px;border-radius:50%;background:var(--bg);transform:translateY(-50%)"></div>
       <div style="position:absolute;top:50%;right:-10px;width:20px;height:20px;border-radius:50%;background:var(--bg);transform:translateY(-50%)"></div>
       <div style="font-size:12px;color:var(--t2);font-weight:800;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.02em"><i class="fas fa-wallet" style="color:var(--purple)"></i> กระเป๋าเงินรอบนี้ (รอบ ${st.cycle})</div>
       <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--t2);margin-bottom:6px">
-        <span>ทำงานมาแล้ว ${st.days} วัน</span><span style="color:var(--t1);font-weight:700">${fmt.money(st.earned)}</span>
+        <span>ทำงานมาแล้ว ${st.days} วัน ${isPT?`(${st.ptHours} ชม.)`:''}</span><span style="color:var(--t1);font-weight:700">${fmt.money(st.earned)}</span>
       </div>
       ${st.draws > 0 ? `<div style="display:flex;justify-content:space-between;font-size:14px;color:var(--t2);margin-bottom:10px">
         <span>เบิกไปแล้ว</span><span style="color:var(--red);font-weight:700">- ${fmt.money(st.draws)}</span>
@@ -784,12 +1017,28 @@ function renderEmpDetail(empId){
     </div>
   </div>
 
+  <!-- Individual Calendar -->
+  <div class="fb-section" style="padding:14px 16px; margin: 16px;">
+    <div class="fb-section-title" style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+      <span>ปฏิทินของ ${emp.name.split(' ')[0]}</span>
+      <span style="font-size:13px;color:var(--t2);">${fmt.monthY(m,y)}</span>
+    </div>
+    ${calHtml}
+    
+    <div style="margin-top:10px;font-size:10px;color:var(--t2);display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+      <div style="display:flex;align-items:center;gap:3px;"><div style="width:10px;height:10px;border-radius:3px;background:#dcfce7;border:1px solid #86efac;"></div> มา</div>
+      <div style="display:flex;align-items:center;gap:3px;"><div style="width:10px;height:10px;border-radius:3px;background:#fef9c3;border:1px solid #fde047;"></div> สาย</div>
+      <div style="display:flex;align-items:center;gap:3px;"><div style="width:10px;height:10px;border-radius:3px;background:#fee2e2;border:1px solid #fca5a5;"></div> ขาด</div>
+      <div style="display:flex;align-items:center;gap:3px;"><div style="width:10px;height:10px;border-radius:3px;background:#fef08a;border:1px solid #facc15;"></div> เบิก</div>
+    </div>
+  </div>
+
   <!-- Monthly Summary -->
-  <div class="fb-section" style="padding:14px 16px">
-    <div class="fb-section-title" style="margin-bottom:12px">สรุปเดือน ก.ค. 2569</div>
+  <div class="fb-section" style="padding:14px 16px; margin: 16px;">
+    <div class="fb-section-title" style="margin-bottom:12px">สรุป ${fmt.monthY(m, y)}</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-      ${[['var(--green)',sum.present,'วันมา'],['var(--yellow)',sum.late,'มาสาย'],['var(--red)',sum.absent,'ขาดงาน'],
-         ['var(--orange)',sum.otTotal+'ชม.','OT'],['var(--blue)',draws.length,'ครั้งที่เบิก'],['var(--green)',fmt.moneyK(ps?.net_pay||0),'รอบ 2 สุทธิ']
+      ${[['var(--green)',sum.present+sum.late,'วันทำงาน'],['var(--yellow)',sum.late,'มาสาย'],['var(--red)',sum.absent,'ขาดงาน'],
+         ['var(--orange)',sum.otTotal+'ชม.','OT'],['var(--purple)',draws.length,'ครั้งที่เบิก'],['var(--red)',deducts.length,'ครั้งที่หัก']
       ].map(([c,v,l])=>`
         <div class="stat-card" style="padding:12px">
           <div class="stat-value" style="font-size:19px;color:${c}">${v}</div>
@@ -800,17 +1049,24 @@ function renderEmpDetail(empId){
 
   <div class="fb-section" style="margin-bottom:0">
     <div class="fb-section-header">
-      <div class="fb-section-title">ประวัติเบิกเงิน/หักค่าอาหาร</div>
-      <button class="fb-section-action" onclick="showDrawModal('${emp.id}')"><i class="fas fa-plus"></i> เพิ่มรายการ</button>
+      <div class="fb-section-title">ประวัติเบิกเงิน/หักเงิน (เดือนนี้)</div>
     </div>
-    ${draws.length ? draws.map(e=>`
+    ${txs.length ? txs.map(e=>`
     <div class="list-item">
-      <div class="exp-type-icon av-sm" style="background:var(--red-bg);color:var(--red)"><i class="fas fa-hand-holding-usd"></i></div>
-      <div class="li-content"><div class="li-title">${e.description}</div><div class="li-sub">${fmt.date(e.date)}</div></div>
-      <div class="li-right"><div style="font-weight:700;color:var(--red)">- ${fmt.money(e.amount)}</div><button class="btn btn-neutral btn-xs" style="margin-top:4px" onclick="deleteDraw('${e.id}')"><i class="fas fa-trash"></i></button></div>
-    </div>`).join('') : '<div style="padding:16px;text-align:center;color:var(--t2)">ยังไม่มีประวัติการเบิก/หักเงิน</div>'}
+      <div class="exp-type-icon av-sm" style="background:${e.type==='draw'?'var(--purple)15':'var(--red)15'};color:${e.type==='draw'?'var(--purple)':'var(--red)'}"><i class="fas fa-${e.type==='draw'?'hand-holding-usd':'minus-circle'}"></i></div>
+      <div class="list-item-content">
+        <div class="list-item-title">${e.type==='draw'?'เบิกเงิน':'หักเงิน'} - ${fmt.date(e.date)}</div>
+        <div class="list-item-subtitle">${e.note||'-'}</div>
+      </div>
+      <div class="list-item-amount" style="color:${e.type==='draw'?'var(--purple)':'var(--red)'}">${fmt.money(e.amount)}</div>
+    </div>
+    `).join('') : '<div class="empty-state" style="padding:24px 16px"><div class="empty-icon-wrap" style="width:40px;height:40px;font-size:16px"><i class="fas fa-receipt"></i></div><div style="font-size:12px">ไม่มีรายการในเดือนนี้</div></div>'}
   </div>
-  <div style="height:80px"></div>`;
+  
+
+  
+  <div style="height:80px"></div>
+  `;
 }
 
 /* ======= MODALS ======= */
@@ -854,7 +1110,8 @@ function showPayslip(id,m,y,cycle){
         <div class="payslip-row income"><span class="payslip-lbl">เงินเดือนส่วนที่เหลือ</span><span>${fmt.money(ps.salary_rem)}</span></div>
         ${ps.ot_norm>0?`<div class="payslip-row income"><span class="payslip-lbl">OT วันธรรมดา (${ps.ot_norm_h}ชม.)</span><span>+${fmt.money(ps.ot_norm)}</span></div>`:''}
         ${ps.ot_hol>0?`<div class="payslip-row income"><span class="payslip-lbl">OT วันหยุด (${ps.ot_hol_h}ชม.)</span><span>+${fmt.money(ps.ot_hol)}</span></div>`:''}
-        ${ps.diligent>0?`<div class="payslip-row income"><span class="payslip-lbl">เบี้ยขยัน</span><span>+${fmt.money(ps.diligent)}</span></div>`:''}
+        ${ps.diligent>0?`<div class="payslip-row income"><span class="payslip-lbl">เบี้ยขยัน (ประจำเดือน)</span><span>+${fmt.money(ps.diligent)}</span></div>`:''}
+        ${ps.daily_bonuses>0?`<div class="payslip-row income"><span class="payslip-lbl">⭐ เบี้ยขยัน (รายวัน)</span><span>+${fmt.money(ps.daily_bonuses)}</span></div>`:''}
         <div class="payslip-row total-income"><span>รายได้รวม</span><span>${fmt.money(ps.gross)}</span></div>
         
         <div class="payslip-section-lbl" style="margin-top:16px">รายหัก</div>
@@ -1108,9 +1365,19 @@ function showDayModal(empId,date){
 /* --- Employee Modal --- */
 function showEmpModal(empId){
   const emp=empId?DB.getEmployee(empId):null;
-  const clrs=['#6C47FF','#E1306C','#0866FF','#42B72A','#F7B928','#F4813F','#FA383E','#1DA1F2'];
+  const isPT = emp?.emp_type === 'parttime';
+  const clrs=['#09090B','#18181B','#27272A','#3F3F46','#52525B','#71717A','#A1A1AA','#D4D4D8'];
   openModal(`
     <div class="modal-title"><i class="fas fa-user-${emp?'edit':'plus'}"></i> ${emp?'แก้ไขข้อมูลพนักงาน':'เพิ่มพนักงานใหม่'}</div>
+    
+    <div class="form-group" style="margin-bottom:16px;">
+      <label class="form-label">ประเภทพนักงาน *</label>
+      <div style="display:flex;gap:12px;">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:700;"><input type="radio" name="emp_type" value="fulltime" ${!isPT?'checked':''} onchange="document.getElementById('sal-lbl').innerText='ค่าแรงรายวัน (฿) *'; document.getElementById('es').value='${emp?(emp.base_salary/30):300}'"> รายเดือน/ประจำ (คิดรายวัน)</label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:700;"><input type="radio" name="emp_type" value="parttime" ${isPT?'checked':''} onchange="document.getElementById('sal-lbl').innerText='ค่าแรงรายชั่วโมง (฿) *'; document.getElementById('es').value='${emp?(emp.hourly_rate||50):50}'"> พาร์ทไทม์ (รายชั่วโมง)</label>
+      </div>
+    </div>
+    
     <div class="form-group">
       <label class="form-label">ชื่อ-นามสกุล *</label>
       <input type="text" class="form-input" id="en" value="${emp?.name||''}" placeholder="ชื่อ นามสกุล">
@@ -1127,8 +1394,8 @@ function showEmpModal(empId){
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">ค่าแรงรายวัน (฿) *</label>
-        <input type="number" class="form-input" id="es" value="${emp ? Math.round(emp.base_salary/30) : 300}" placeholder="300">
+        <label class="form-label" id="sal-lbl">${isPT ? 'ค่าแรงรายชั่วโมง (฿) *' : 'ค่าแรงรายวัน (฿) *'}</label>
+        <input type="number" class="form-input" id="es" value="${emp ? (isPT ? emp.hourly_rate : Math.round(emp.base_salary/30)) : 300}" placeholder="300">
       </div>
       <div class="form-group">
         <label class="form-label">วันเริ่มงาน</label>
@@ -1247,12 +1514,17 @@ function quickSetStatus(empId,date,status){
 }
 function submitEmp(empId){
   const name=v('en')?.trim(),dept=v('ed')?.trim(),pos=v('ep')?.trim();
-  const daily=parseFloat(v('es')),start=v('est'),phone=v('eph')?.trim(),bank=v('eb')?.trim();
+  const wage=parseFloat(v('es')),start=v('est'),phone=v('eph')?.trim(),bank=v('eb')?.trim();
   const dili=parseFloat(v('ea'))||0,loan=parseFloat(v('el'))||0,color=v('ec')||'#6C47FF';
   const emoji=v('emj')?.trim()||'';
-  if(!name||!dept||!pos||!daily||daily<=0){toast('กรุณากรอกข้อมูลที่จำเป็น (*)','error');return;}
-  const salary=daily*30;
-  const data={name,department:dept,position:pos,base_salary:salary,start_date:start,phone,bank_account:bank,allowance_diligent:dili,loan_monthly:loan,avatar_color:color,emoji};
+  const emp_type = document.querySelector('input[name="emp_type"]:checked').value;
+  
+  if(!name||!dept||!pos||!wage||wage<=0){toast('กรุณากรอกข้อมูลที่จำเป็น (*)','error');return;}
+  
+  const salary = emp_type === 'fulltime' ? wage*30 : 0;
+  const hourly = emp_type === 'parttime' ? wage : 0;
+  
+  const data={name,department:dept,position:pos,base_salary:salary,hourly_rate:hourly,emp_type:emp_type,start_date:start,phone,bank_account:bank,allowance_diligent:dili,loan_monthly:loan,avatar_color:color,emoji};
   if(empId){DB.updateEmployee(empId,data);toast('แก้ไขข้อมูลสำเร็จ ✅','success');}
   else{DB.addEmployee(data);toast('เพิ่มพนักงานสำเร็จ 🎉','success');}
   closeModal();renderPage(S.page);
